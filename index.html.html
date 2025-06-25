@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face ID</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            background: #000;
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .phone-screen {
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .face-id-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 60px;
+            margin-top: -100px;
+        }
+
+        .face-id-title {
+            font-size: 32px;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: -0.5px;
+            transition: color 0.3s ease;
+            margin-bottom: 10px;
+        }
+
+        .face-id-title.error {
+            color: #ff453a;
+        }
+
+        .face-id-title.success {
+            color: #32d74b;
+        }
+
+        .camera-container {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            position: relative;
+            background: #1c1c1e;
+            border: 3px solid #2c2c2e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin-top: 40px;
+        }
+
+        .face-placeholder {
+            font-size: 75px;
+            color: #48484a;
+            z-index: 1;
+        }
+
+        .camera-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            transform: scaleX(-1);
+            display: none;
+        }
+
+        .scanning-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, transparent 270deg, rgba(0, 122, 255, 0.8) 360deg);
+            animation: spin 2s linear infinite;
+            opacity: 0.8;
+        }
+
+        .scanning-overlay.paused {
+            animation-play-state: paused;
+            opacity: 0;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .scan-lines {
+            position: absolute;
+            top: 10%;
+            left: 10%;
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 122, 255, 0.3);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .scan-lines.paused {
+            animation-play-state: paused;
+            opacity: 0;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.1); opacity: 0.6; }
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .success-indicator {
+            background: rgba(50, 215, 75, 0.9);
+            color: white;
+            animation: scaleIn 0.4s ease-out;
+        }
+
+        .error-indicator {
+            background: rgba(255, 69, 58, 0.9);
+            color: white;
+            animation: shake 0.6s ease-out;
+        }
+
+        @keyframes scaleIn {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        @keyframes shake {
+            0%, 20%, 40%, 60%, 80%, 100% { transform: translate(-50%, -50%) translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translate(-50%, -50%) translateX(-8px); }
+        }
+
+        .instruction-text {
+            font-size: 17px;
+            font-weight: 400;
+            color: #8e8e93;
+            text-align: center;
+            line-height: 1.4;
+            transition: color 0.3s ease;
+            max-width: 280px;
+        }
+
+        .instruction-text.error {
+            color: #ff453a;
+        }
+
+        .instruction-text.success {
+            color: #32d74b;
+        }
+
+        .unlocked-screen {
+            display: none;
+            text-align: center;
+            animation: fadeIn 0.5s ease-out;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .unlocked-screen h2 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 0;
+            color: #32d74b;
+        }
+
+        .unlocked-screen p {
+            font-size: 17px;
+            color: #8e8e93;
+            margin-top: 0;
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .home-indicator {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 134px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .show {
+            display: flex !important;
+        }
+
+        .tap-zone {
+            position: fixed;
+            width: 33.33%;
+            height: 100%;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+        }
+
+        .tap-left {
+            left: 0;
+        }
+
+        .tap-center {
+            left: 33.33%;
+        }
+
+        .tap-right {
+            right: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-screen">
+        <div class="face-id-container" id="faceIdContainer">
+            <h1 class="face-id-title" id="faceIdTitle">Face ID</h1>
+            
+            <div class="camera-container">
+                <div class="face-placeholder" id="facePlaceholder">👤</div>
+                <video class="camera-feed" id="cameraFeed" autoplay muted playsinline></video>
+                <div class="scanning-overlay" id="scanningOverlay"></div>
+                <div class="scan-lines" id="scanLines"></div>
+                <div class="status-indicator success-indicator hidden" id="successIndicator">✓</div>
+                <div class="status-indicator error-indicator hidden" id="errorIndicator">✕</div>
+            </div>
+            
+            <p class="instruction-text" id="instructionText">Look at phone to unlock</p>
+        </div>
+
+        <div class="unlocked-screen hidden" id="unlockedScreen">
+            <h2>✓ Unlocked</h2>
+            <p>Face ID authentication successful</p>
+        </div>
+
+        <div class="tap-zone tap-left" onclick="triggerFailure()"></div>
+        <div class="tap-zone tap-center" onclick="resetFaceId()"></div>
+        <div class="tap-zone tap-right" onclick="triggerSuccess()"></div>
+
+        <div class="home-indicator"></div>
+    </div>
+
+    <script>
+        let currentState = 'scanning';
+        let stream = null;
+        
+        // Start camera after 2 seconds
+        setTimeout(() => {
+            startCamera();
+        }, 2000);
+        
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'user',
+                        width: { ideal: 480 },
+                        height: { ideal: 480 }
+                    }
+                });
+                
+                const video = document.getElementById('cameraFeed');
+                const placeholder = document.getElementById('facePlaceholder');
+                
+                video.srcObject = stream;
+                video.style.display = 'block';
+                placeholder.style.display = 'none';
+                
+            } catch (error) {
+                console.log('Camera access denied or not available');
+                // Keep placeholder visible if camera fails
+            }
+        }
+        
+        function triggerFailure() {
+            if (currentState !== 'scanning') return;
+            
+            currentState = 'failed';
+            const overlay = document.getElementById('scanningOverlay');
+            const lines = document.getElementById('scanLines');
+            const title = document.getElementById('faceIdTitle');
+            const instruction = document.getElementById('instructionText');
+            const errorIndicator = document.getElementById('errorIndicator');
+            
+            overlay.classList.add('paused');
+            lines.classList.add('paused');
+            
+            title.classList.add('error');
+            instruction.textContent = 'Face ID Not Recognized';
+            instruction.classList.add('error');
+            
+            errorIndicator.classList.remove('hidden');
+            errorIndicator.classList.add('show');
+            
+            setTimeout(() => {
+                if (currentState === 'failed') {
+                    resetFaceId();
+                }
+            }, 2500);
+        }
+        
+        function triggerSuccess() {
+            if (currentState !== 'scanning') return;
+            
+            currentState = 'success';
+            const overlay = document.getElementById('scanningOverlay');
+            const lines = document.getElementById('scanLines');
+            const title = document.getElementById('faceIdTitle');
+            const instruction = document.getElementById('instructionText');
+            const successIndicator = document.getElementById('successIndicator');
+            const faceIdContainer = document.getElementById('faceIdContainer');
+            const unlockedScreen = document.getElementById('unlockedScreen');
+            
+            overlay.classList.add('paused');
+            lines.classList.add('paused');
+            
+            title.classList.add('success');
+            instruction.textContent = 'Authentication Successful';
+            instruction.classList.add('success');
+            
+            successIndicator.classList.remove('hidden');
+            successIndicator.classList.add('show');
+            
+            setTimeout(() => {
+                faceIdContainer.classList.add('hidden');
+                unlockedScreen.classList.remove('hidden');
+                unlockedScreen.classList.add('show');
+            }, 1200);
+        }
+        
+        function resetFaceId() {
+            currentState = 'scanning';
+            const overlay = document.getElementById('scanningOverlay');
+            const lines = document.getElementById('scanLines');
+            const title = document.getElementById('faceIdTitle');
+            const instruction = document.getElementById('instructionText');
+            const successIndicator = document.getElementById('successIndicator');
+            const errorIndicator = document.getElementById('errorIndicator');
+            const faceIdContainer = document.getElementById('faceIdContainer');
+            const unlockedScreen = document.getElementById('unlockedScreen');
+            
+            overlay.classList.remove('paused');
+            lines.classList.remove('paused');
+            
+            title.textContent = 'Face ID';
+            title.classList.remove('error', 'success');
+            instruction.textContent = 'Look at phone to unlock';
+            instruction.classList.remove('error', 'success');
+            
+            successIndicator.classList.add('hidden');
+            successIndicator.classList.remove('show');
+            errorIndicator.classList.add('hidden');
+            errorIndicator.classList.remove('show');
+            
+            faceIdContainer.classList.remove('hidden');
+            unlockedScreen.classList.add('hidden');
+            unlockedScreen.classList.remove('show');
+        }
+        
+        document.addEventListener('keydown', (event) => {
+            switch(event.key.toLowerCase()) {
+                case 'f':
+                    triggerFailure();
+                    break;
+                case 's':
+                    triggerSuccess();
+                    break;
+                case 'r':
+                    resetFaceId();
+                    break;
+            }
+        });
+        
+        // Cleanup camera when page unloads
+        window.addEventListener('beforeunload', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        });
+    </script>
+</body>
+</html>
